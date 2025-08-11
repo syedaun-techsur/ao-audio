@@ -1,0 +1,47 @@
+{
+  "claim_generator": "media-provenance-mvp/1.0",
+  "title": "Official Court Hearing Recording", 
+  "format": "audio/wav",
+  "instance_id": "xmp:iid:court-hearing-2024-001",
+  "assertions": [
+    {
+      "label": "c2pa.actions",
+      "data": {
+        "actions": [
+          {
+            "action": "c2pa.recorded",
+            "when": "2024-01-15T10:30:00Z",
+            "softwareAgent": "Court Recording System v2.1",
+            "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture"
+          }
+        ]
+      }
+    },
+    {
+      "label": "c2pa.metadata",
+      "data": {
+        "court_identifier": "Superior Court of California, County of San Francisco",
+        "case_number": "CV-2024-001234",
+        "hearing_date": "2024-01-15",
+        "hearing_time": "10:30:00Z",
+        "judge": "Hon. Jane Smith",
+        "court_reporter": "John Doe, CSR #12345",
+        "recording_equipment": "Stenomask Digital Audio System",
+        "location": "Courtroom 12, 400 McAllister St, San Francisco, CA 94102"
+      }
+    },
+    {
+      "label": "c2pa.location.created",
+      "data": {
+        "latitude": 37.7799,
+        "longitude": -122.4194,
+        "altitude": 0,
+        "name": "Superior Court of California, San Francisco"
+      }
+    }
+  ],
+  "signature_info": {
+    "issuer": "Court Recording Authority",
+    "time": "2024-01-15T10:30:00Z"
+  }
+} 
