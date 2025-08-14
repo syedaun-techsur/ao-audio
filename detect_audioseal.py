@@ -5,9 +5,9 @@ import torch
 from audioseal import AudioSeal
 
 SR_EXPECTED = 16000
-CHUNK_SEC = 10          # analyze in 10s windows (tweakable)
-FRAME_THRESH = 0.5      # per-frame watermark presence threshold (from README)
-MIN_GAP_SEC = 2.0       # report gaps >= 2s as suspicious (tweakable)
+CHUNK_SEC = 10          # analyze in 10s windows 
+FRAME_THRESH = 0.5      # per-frame watermark presence threshold 
+MIN_GAP_SEC = 2.0       # report gaps >= 2s as suspicious 
 
 def to_tensor_mono(x: np.ndarray):
     if x.ndim == 2:
@@ -68,8 +68,7 @@ def main():
 
             cursor_samples += audio.shape[0]
             chunk_idx += 1
-            secs_done = cursor_samples / SR_EXPECTED
-            print(f"Chunk {chunk_idx} ✓  ({secs_done/60:.1f} min analyzed)")
+            # Suppress verbose progress output - only show final results
 
         overall_pct = 100.0 * (total_pos_frames / max(1, total_frames))
         duration_min = total_samples / SR_EXPECTED / 60.0

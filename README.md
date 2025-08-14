@@ -79,7 +79,6 @@ pip install torch soundfile numpy audioseal
 | `hearing.signed.wav` | 91,304,174 bytes | Official C2PA signed audio | ✅ Valid |
 | `hearing.tampered.wav` | 91,609,934 bytes | Tampered version for testing | ❌ Invalid |
 | `manifest.json` | 1,389 bytes | C2PA manifest with court metadata | ✅ Created |
-| `verification-output.json` | 116 bytes | C2PA verification results | ✅ Generated |
 
 ### Running Step 1
 

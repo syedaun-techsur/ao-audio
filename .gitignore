@@ -13,7 +13,6 @@
 *.csr
 
 # Generated files
-verification-output.json
 synthetic_tail.wav
 
 # Python
