@@ -7,6 +7,7 @@ import torch
 from audioseal import AudioSeal
 import os
 from pathlib import Path
+import tempfile
 
 SR_EXPECTED = 16000
 CHUNK_SEC = 10
@@ -21,6 +22,10 @@ st.set_page_config(
 
 st.title("⚖️ Court Audio Verification System")
 st.markdown("### Verify authenticity of court hearing recordings using C2PA and AudioSeal")
+
+# Initialize session state for file path
+if 'temp_file_path' not in st.session_state:
+    st.session_state.temp_file_path = None
 
 def run_c2patool(file_path):
     """Run c2patool --info on a file and return the output"""
@@ -119,38 +124,47 @@ def check_watermark(file_path):
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("📂 Select Audio File")
+    st.subheader("📂 Upload Audio File")
     
-    audio_files = {
-        "Official Recording (Signed)": "hearing.signed.wav",
-        "Tampered Version": "hearing.tampered.wav",
-        "Watermarked (No C2PA)": "hearing.wm.wav",
-        "Raw Original": "hearing.raw.wav"
-    }
-    
-    selected_file_label = st.selectbox(
+    uploaded_file = st.file_uploader(
         "Choose an audio file to verify:",
-        list(audio_files.keys())
+        type=["wav", "mp3", "m4a", "flac", "ogg"],
+        help="Upload a court hearing recording to verify its authenticity"
     )
     
-    selected_file = audio_files[selected_file_label]
-    file_path = Path("/Users/aunabbas/Documents/media-provenance-mvp") / selected_file
-    
-    if file_path.exists():
-        st.success(f"✓ File loaded: {selected_file}")
+    if uploaded_file is not None:
+        # Only create a new temp file if the uploaded file has changed
+        file_bytes = uploaded_file.getvalue()
+        file_key = f"{uploaded_file.name}_{len(file_bytes)}"
+        
+        if 'current_file_key' not in st.session_state or st.session_state.current_file_key != file_key:
+            # Clean up old temp file if it exists
+            if st.session_state.temp_file_path and Path(st.session_state.temp_file_path).exists():
+                try:
+                    os.unlink(st.session_state.temp_file_path)
+                except:
+                    pass
+            
+            # Create new temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_file.name)[1]) as tmp_file:
+                tmp_file.write(file_bytes)
+                st.session_state.temp_file_path = tmp_file.name
+                st.session_state.current_file_key = file_key
+        
+        file_path = Path(st.session_state.temp_file_path)
+        
+        st.success(f"✓ File loaded: {uploaded_file.name}")
         
         st.subheader("🔊 Audio Player")
-        st.audio(str(file_path))
-        
-        file_stats = os.stat(file_path)
-        st.info(f"File size: {file_stats.st_size / (1024*1024):.2f} MB")
+        st.audio(uploaded_file)
     else:
-        st.error(f"File not found: {selected_file}")
+        file_path = None
+        st.info("Please upload an audio file to verify")
 
 with col2:
     st.subheader("🔍 Verification Tools")
     
-    if file_path.exists():
+    if file_path is not None and file_path.exists():
         col2a, col2b = st.columns(2)
         
         with col2a:
@@ -181,12 +195,9 @@ with col2:
                         st.error(f"❌ Error: {result.get('error', 'Unknown error')}")
                     else:
                         if result["status"] == "AUTHENTIC":
-                            st.success(f"✅ AUTHENTIC - Watermark Score: {result['score']}%")
+                            st.success("✅ AUTHENTIC")
                         else:
-                            st.error(f"⚠️ TAMPERED - Watermark Score: {result['score']}%")
-                        
-                        st.metric("Overall Watermark Score", f"{result['score']}%")
-                        st.metric("Audio Duration", f"{result.get('duration_minutes', 0)} minutes")
+                            st.error("⚠️ TAMPERED")
                         
                         if result["tampered_regions"]:
                             st.error(f"🚨 Found {len(result['tampered_regions'])} tampered region(s)")
@@ -194,9 +205,12 @@ with col2:
                             
                             st.subheader("Tampered Regions Detail:")
                             for i, region in enumerate(result["tampered_regions"], 1):
+                                start_min = int(region['start_time'] // 60)
+                                start_sec = int(region['start_time'] % 60)
+                                end_min = int(region['end_time'] // 60)
+                                end_sec = int(region['end_time'] % 60)
                                 st.warning(
-                                    f"Region {i}: {region['start_time']}s → {region['end_time']}s "
-                                    f"(Duration: {region['duration']}s)"
+                                    f"Region {i}: {start_min:02d}:{start_sec:02d} → {end_min:02d}:{end_sec:02d}"
                                 )
                         else:
                             st.success("No tampered regions detected")
