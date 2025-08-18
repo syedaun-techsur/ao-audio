@@ -413,35 +413,139 @@ with col2:
 
 st.divider()
 
-with st.expander("ℹ️ About This System"):
+with st.expander("📖 How to Use This System"):
     st.markdown("""
-    ### How It Works
+    ### Getting Started
     
-    This system uses two complementary technologies to verify audio authenticity:
+    **Step 1: Upload Your Audio File**
+    - Click "Browse files" or drag and drop your audio file
+    - Supported formats: WAV, MP3, M4A, FLAC, OGG
+    - You'll see the audio player once uploaded
     
-    1. **C2PA (Content Credentials)**: Cryptographically signed metadata that proves the origin and authenticity of the file
-    2. **AudioSeal Watermarking**: Imperceptible audio watermarks that can detect tampering even in modified copies
+    **Step 2: Choose Your Verification Method**
     
-    ### Verification Process
+    You have three verification options:
     
-    - **Official recordings** should have both valid C2PA credentials AND no watermark gaps
-    - **Tampered recordings** will typically fail C2PA verification and/or show gaps in the watermark
-    - **Watermark gaps ≥ 1 second** indicate potential tampering or manipulation
+    1. **📜 View Content Credentials**
+       - Click this to check the digital seal
+       - Shows who created the file and when
+       - Best for: Verifying official documents
     
-    ### File Types in Demo
+    2. **🔐 Check Watermark**
+       - Click this to scan for hidden watermarks
+       - Detects any tampering in the audio
+       - Best for: Finding edited sections
     
-    - **Official Recording (Signed)**: Contains both C2PA signature and AudioSeal watermark
-    - **Tampered Version**: Modified version with ~10 second insertion (fails both checks)
-    - **Watermarked (No C2PA)**: Has watermark but no C2PA signature
-    - **Raw Original**: Original file before any processing
+    3. **🔗 Check Durable Credentials**
+       - Click this for our most advanced check
+       - Recovers information even from damaged files
+       - Best for: Files from social media or unknown sources
+    
+    **Step 3: Understand Your Results**
+    
+    - **Green messages** = Good news, file is authentic
+    - **Yellow warnings** = Caution, some issues detected
+    - **Red alerts** = Problems found, see details
+    
+    **Pro Tip:** For the most thorough verification, run all three checks!
     """)
 
-with st.expander("🔧 Technical Details"):
-    st.code("""
-    Configuration:
-    - Sample Rate: 16000 Hz
-    - Chunk Size: 10 seconds
-    - Frame Threshold: 0.5
-    - Minimum Gap Detection: 1.0 seconds
-    - Watermark Model: audioseal_detector_16bits
-    """, language="python")
+with st.expander("🏗️ Durable Content Credentials Architecture"):
+    st.markdown("""
+    ### How Durable Content Credentials Work
+    
+    This diagram shows the breakthrough technology that allows credential recovery even when traditional C2PA metadata is stripped:
+    """)
+    
+    try:
+        st.image("architecture.png", caption="Durable Content Credentials System Architecture", use_container_width=True)
+    except:
+        st.error("Architecture diagram not found. Please ensure 'architecture.png' is in the project directory.")
+        st.markdown("""
+        **Durable Credentials Process:**
+        - Manifest ID embedded in watermark during creation
+        - ID links to credential database containing court information
+        - Recovery possible even when C2PA signatures are lost
+        - Shows both original source AND tampering detection
+        """)
+
+with st.expander("ℹ️ About This System"):
+    st.markdown("""
+    ## Welcome to the Court Audio Verification System
+    
+    This cutting-edge system ensures the authenticity of court audio recordings using **three layers of protection**. 
+    Think of it as a digital fingerprint, invisible watermark, and recovery system all working together to protect the truth.
+    
+    ---
+    
+    ### **Layer 1: Content Credentials (C2PA)**
+    
+    **What it does:** Acts like a digital seal on the audio file
+    
+    **How it helps you:**
+    - Proves WHO created the recording (court reporter, judge, etc.)
+    - Shows WHEN it was created (date and time)
+    - Confirms WHERE it came from (which court)
+    - Ensures the file hasn't been modified since signing
+    
+    **Limitation:** This seal can be lost when files are uploaded to social media or messaging apps
+    
+    ---
+    
+    ### **Layer 2: Watermark Detection (AudioSeal)**
+    
+    **What it does:** Embeds an invisible pattern throughout the entire audio
+    
+    **How it helps you:**
+    - Detects if ANY part of the audio has been altered
+    - Shows EXACTLY where tampering occurred (down to the second)
+    - Works even after file conversion or compression
+    
+    **Think of it like:** Invisible ink that reveals tampering when checked
+    
+    ---
+    
+    ### **Layer 3: Durable Credentials (NEW!)**
+    
+    **What it does:** Recovers the original credentials even when traditional methods fail
+    
+    **How it helps you:**
+    - Recovers court information even after social media uploads
+    - Works when the digital seal (C2PA) has been stripped
+    - Shows BOTH the original source AND any tampering
+    - Provides evidence trail even for modified files
+    
+    **The breakthrough:** Even if someone tampers with the audio and removes the digital seal, 
+    we can still prove it came from an official court recording and show exactly what was changed.
+    
+    ---
+    
+    ### Real-World Scenarios
+    
+    **Scenario 1: Official Recording**
+    - All three checks pass
+    - File is 100% authentic and unmodified
+    - Full chain of custody maintained
+    
+    **Scenario 2: Social Media Upload**
+    - C2PA seal lost (stripped by platform)
+    - Watermark intact
+    - Durable credentials recoverable
+    - Original source verified despite platform processing
+    
+    **Scenario 3: Tampered Evidence**
+    - C2PA seal broken
+    - Watermark shows gaps
+    - Durable credentials still recovers original info
+    - Shows exact timestamps of tampering
+    
+    ---
+    
+    ### Why This Matters
+    
+    In today's world of deepfakes and manipulated media, this system provides:
+    - **Legal certainty** for court proceedings
+    - **Evidence integrity** for investigations
+    - **Public trust** in official recordings
+    - **Tamper evidence** that stands up in court
+    """)
