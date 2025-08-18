@@ -27,11 +27,17 @@ st.markdown("### Verify authenticity of court hearing recordings using C2PA and 
 if 'temp_file_path' not in st.session_state:
     st.session_state.temp_file_path = None
 
-def run_c2patool(file_path):
-    """Run c2patool --info on a file and return the output"""
+def run_c2patool(file_path, detailed=False):
+    """Run c2patool on a file and return the output"""
     try:
+        cmd = ["c2patool", file_path]
+        if detailed:
+            cmd.append("--detailed")
+        else:
+            cmd.append("--info")
+            
         result = subprocess.run(
-            ["c2patool", file_path, "--info"],
+            cmd,
             capture_output=True,
             text=True,
             check=False
@@ -39,6 +45,110 @@ def run_c2patool(file_path):
         return result.stdout if result.returncode == 0 else result.stderr
     except Exception as e:
         return f"Error running c2patool: {str(e)}"
+
+def parse_c2pa_output(c2pa_output):
+    """Parse c2patool detailed JSON output to extract metadata"""
+    try:
+        # Try to parse as JSON first (for detailed output)
+        if c2pa_output.strip().startswith('{'):
+            data = json.loads(c2pa_output)
+            metadata = {}
+            
+            # Extract from manifests
+            if 'manifests' in data and data['manifests']:
+                # Get the active manifest
+                active_manifest_id = data.get('active_manifest')
+                if active_manifest_id and active_manifest_id in data['manifests']:
+                    manifest = data['manifests'][active_manifest_id]
+                else:
+                    # Fallback to first manifest
+                    manifest = list(data['manifests'].values())[0]
+                
+                # Extract claim data
+                if 'claim' in manifest:
+                    claim = manifest['claim']
+                    
+                    # Basic info
+                    metadata['title'] = claim.get('dc:title', 'Unknown')
+                    metadata['format'] = claim.get('dc:format', 'Unknown')
+                    metadata['instance_id'] = claim.get('instanceID', 'Unknown')
+                    metadata['claim_generator'] = claim.get('claim_generator', 'Unknown')
+                    
+                    # Claim generator info
+                    if 'claim_generator_info' in claim:
+                        claim_info = claim['claim_generator_info']
+                        if isinstance(claim_info, list) and claim_info:
+                            info = claim_info[0]
+                            metadata['generator_name'] = info.get('name', 'Unknown')
+                            metadata['generator_version'] = info.get('version', 'Unknown')
+                
+                # Extract assertion data
+                if 'assertion_store' in manifest:
+                    assertions = manifest['assertion_store']
+                    
+                    # Actions
+                    if 'c2pa.actions.v2' in assertions:
+                        actions_data = assertions['c2pa.actions.v2']
+                        if 'actions' in actions_data and actions_data['actions']:
+                            action = actions_data['actions'][0]
+                            metadata['action'] = action.get('action', 'Unknown').replace('c2pa.', '')
+                            metadata['when'] = action.get('when', 'Unknown')
+                    
+                    # Schema.org CreativeWork
+                    if 'stds.schema-org.CreativeWork' in assertions:
+                        creative_work = assertions['stds.schema-org.CreativeWork']
+                        metadata['content_title'] = creative_work.get('name', 'Unknown')
+                        metadata['identifier'] = creative_work.get('identifier', 'Unknown')
+                        metadata['date_created'] = creative_work.get('dateCreated', 'Unknown')
+                        
+                        # Author info
+                        if 'author' in creative_work and creative_work['author']:
+                            if isinstance(creative_work['author'], list):
+                                author = creative_work['author'][0]
+                            else:
+                                author = creative_work['author']
+                            metadata['author'] = author.get('name', 'Unknown')
+                        
+                        # Location
+                        if 'locationCreated' in creative_work:
+                            location = creative_work['locationCreated']
+                            metadata['location'] = location.get('name', 'Unknown')
+                
+                # Extract signature info
+                if 'signature' in manifest:
+                    sig_info = manifest['signature']
+                    metadata['signature_algorithm'] = sig_info.get('alg', 'Unknown')
+                    metadata['issuer'] = sig_info.get('issuer', 'Unknown')
+                    metadata['signature_time'] = sig_info.get('time', 'Unknown')
+            
+            # Validation state
+            metadata['validation_state'] = data.get('validation_state', 'Unknown')
+            
+            return metadata
+            
+        else:
+            # Parse text output for --info mode
+            lines = c2pa_output.split('\n')
+            metadata = {}
+            
+            for line in lines:
+                line = line.strip()
+                if 'Information for' in line:
+                    # Extract filename
+                    filename = line.replace('Information for ', '').strip()
+                    metadata['filename'] = filename
+                elif 'Manifest store size' in line:
+                    # Extract manifest info
+                    metadata['manifest_info'] = line
+                elif line == 'Validated':
+                    metadata['validation_state'] = 'Valid'
+                elif 'manifest' in line.lower():
+                    metadata['manifest_count'] = line
+            
+            return metadata
+            
+    except Exception as e:
+        return {}
 
 def to_tensor_mono(x: np.ndarray):
     """Convert audio to mono tensor for AudioSeal"""
@@ -302,19 +412,91 @@ with col2:
         with col2a:
             if st.button("📜 View Content Credentials", use_container_width=True):
                 with st.spinner("Checking C2PA credentials..."):
-                    c2pa_output = run_c2patool(str(file_path))
+                    # First try detailed output
+                    c2pa_detailed = run_c2patool(str(file_path), detailed=True)
+                    c2pa_info = run_c2patool(str(file_path), detailed=False)
                     
-                    st.subheader("C2PA Verification Results")
+                    st.subheader("📜 C2PA Verification Results")
                     
-                    if "No claim or manifest found" in c2pa_output or "No manifests found" in c2pa_output or "No C2PA Manifests" in c2pa_output:
+                    if "No claim or manifest found" in c2pa_info or "No manifests found" in c2pa_info or "No C2PA Manifests" in c2pa_info:
                         st.error("❌ No Content Credentials found")
-                        st.code(c2pa_output, language="text")
-                    elif "Validated" in c2pa_output or "Successfully validated" in c2pa_output:
-                        st.success("✅ Valid Content Credentials found")
-                        st.code(c2pa_output, language="text")
+                        st.info("This file does not contain C2PA metadata. Try 'Check Durable Credentials' to recover information from the watermark.")
+                        
+                        with st.expander("View Raw Output"):
+                            st.code(c2pa_info, language="text")
+                    
+                    elif "Validated" in c2pa_info or "Successfully validated" in c2pa_info:
+                        st.success("✅ Valid Content Credentials Found")
+                        
+                        # Parse detailed metadata
+                        metadata = parse_c2pa_output(c2pa_detailed)
+                        
+                        if metadata and len([k for k, v in metadata.items() if v != 'Unknown']) > 0:
+                            st.markdown("### 📋 Content Metadata:")
+                            
+                            # Core content information
+                            if metadata.get('content_title', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Content Title:** {metadata['content_title']}")
+                            elif metadata.get('title', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **File Title:** {metadata['title']}")
+                            
+                            if metadata.get('identifier', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Court Case ID:** {metadata['identifier']}")
+                            
+                            if metadata.get('author', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Author:** {metadata['author']}")
+                            
+                            if metadata.get('location', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Location:** {metadata['location']}")
+                            
+                            if metadata.get('date_created', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Date Created:** {metadata['date_created']}")
+                            elif metadata.get('when', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **When:** {metadata['when']}")
+                            
+                            if metadata.get('action', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Action:** {metadata['action'].title()}")
+                            
+                            if metadata.get('format', 'Unknown') != 'Unknown':
+                                st.markdown(f"- **Format:** {metadata['format']}")
+                        else:
+                            st.info("✅ Credentials validated but no detailed metadata could be parsed.")
+                        
+                        with st.expander("View Raw C2PA Output"):
+                            st.code(c2pa_detailed if c2pa_detailed.strip().startswith('{') else c2pa_info, language="json" if c2pa_detailed.strip().startswith('{') else "text")
+                    
                     else:
                         st.warning("⚠️ Content Credentials present but validation unclear")
-                        st.code(c2pa_output, language="text")
+                        
+                        # Try to parse metadata even if validation is unclear
+                        metadata = parse_c2pa_output(c2pa_detailed)
+                        
+                        if metadata and len([k for k, v in metadata.items() if v != 'Unknown']) > 0:
+                            st.markdown("### 📋 Extracted Metadata:")
+                            
+                            # Display available metadata
+                            display_fields = [
+                                ('content_title', 'Content Title'),
+                                ('title', 'File Title'),
+                                ('identifier', 'Court Case ID'),
+                                ('author', 'Author'),
+                                ('location', 'Location'),
+                                ('date_created', 'Date Created'),
+                                ('when', 'When'),
+                                ('action', 'Action'),
+                                ('format', 'Format'),
+                                ('validation_state', 'Validation State')
+                            ]
+                            
+                            for key, display_name in display_fields:
+                                if metadata.get(key, 'Unknown') != 'Unknown':
+                                    value = metadata[key]
+                                    if key == 'action':
+                                        value = value.title()
+                                    st.markdown(f"- **{display_name}:** {value}")
+                        
+                        with st.expander("View Raw C2PA Output"):
+                            st.code(c2pa_detailed if c2pa_detailed.strip().startswith('{') else c2pa_info, language="json" if c2pa_detailed.strip().startswith('{') else "text")
         
         with col2b:
             if st.button("🔐 Check Watermark", use_container_width=True):
