@@ -1,0 +1,12 @@
+{
+  "4280": {
+    "court_id": "SupremeCourt123",
+    "title": "Hearing on case# 123",
+    "location": "Supreme Court of The United States",
+    "recorder": "Joe Smith",
+    "creator": "Official Court Recording",
+    "date_created": "2025-08-26T15:53:28.023190",
+    "claim_generator": "Court Audio Authentication System/1.0",
+    "date": "2025-08-26"
+  }
+}
